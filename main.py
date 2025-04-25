@@ -7,22 +7,32 @@ import signal
 import sys
 import os
 from dotenv import load_dotenv
-#from database import setup_database
-#from betting import BettingCog
 from toramskill import ToramSkillCog
-#from music import MusicCog
-#from vcrandom import VCRandomCog 
-#from yomiage import YomiageCog
-#from makevc import MakeVC
-#from remind import RemindCog
-#from roll import RollCog
 from datetime import datetime
+
+# 標準入力からトークンを取得する関数
+def get_token_from_console():
+    print("Discord BOTのトークンが見つかりませんでした。")
+    token = input("Discord BOTのトークンを入力してください: ")
+    
+    # .envファイルを作成する
+    with open('.env', 'w', encoding='utf-8') as f:
+        f.write(f'DISCORD_TOKEN={token}\n')
+        # デフォルトの管理者IDも追加
+        f.write('ADMIN_USER_ID=589736597935620097\n')
+    
+    print(".envファイルを作成しました。")
+    return token
 
 # Load the .env file
 load_dotenv()
 
 # Get the token and admin user ID
 TOKEN = os.getenv('DISCORD_TOKEN')
+# トークンが存在しない場合は、コンソールから取得
+if not TOKEN:
+    TOKEN = get_token_from_console()
+
 ADMIN_USER_ID = int(os.getenv('ADMIN_USER_ID', '589736597935620097'))
 print(f"Token loaded: {'Yes' if TOKEN else 'No'}")
 
@@ -132,19 +142,9 @@ async def server_list(ctx):
         await ctx.send(message + footer)
 
 async def setup_cogs():
-    #setup_database()
-    #await bot.add_cog(BettingCog(bot))
-    #await bot.add_cog(MusicCog(bot))
-    
     # Cogが既に読み込まれているかチェックする
     if not bot.get_cog("ToramSkillCog"):
         await bot.add_cog(ToramSkillCog(bot))
-    
-    #await bot.add_cog(VCRandomCog(bot)) 
-    #await bot.add_cog(YomiageCog(bot))
-    #await bot.add_cog(MakeVC(bot))
-    #await bot.add_cog(RemindCog(bot))
-    #await bot.add_cog(RollCog(bot))
 
 async def main():
     retry_count = 0
@@ -169,7 +169,11 @@ async def main():
                 break
         except discord.errors.LoginFailure:
             print("Failed to login. Please check your token.")
-            break
+            # トークンが間違っている場合は、再入力を求める
+            if os.path.exists('.env'):
+                os.remove('.env')  # 既存の.envファイルを削除
+            TOKEN = get_token_from_console()
+            retry_count += 1
         except aiohttp.ClientConnectionError:
             print("Failed to connect to Discord. Please check your internet connection.")
             retry_delay = base_delay * (2 ** retry_count)
